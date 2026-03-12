@@ -2,7 +2,7 @@ import time
 from enum import Enum
 
 CRITICAL_BATTERY_THRESHOLD = 0.20
-
+DELAY=1
 
 class Mode(Enum):
     DISARMED        = "DISARMED"
@@ -85,7 +85,7 @@ class Drone:
         """battery drain until 100 ticks."""
         for i in range(1,max_ticks):
             #self._battery - self._drain_rate * 1
-            time.sleep(5)  
+            time.sleep(DELAY)  
             if self._battery<CRITICAL_BATTERY_THRESHOLD:
                 break
                   

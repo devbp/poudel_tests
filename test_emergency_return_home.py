@@ -1,6 +1,7 @@
 import pytest
 from conftest import *
 import time
+
 from poudel_tests.utils.util import *
 from pathlib import Path
 
@@ -18,67 +19,22 @@ NEXT_POSITION               = (60.109, 12.290, 10.0)  # simulated waypoint
 TEST_DATA_FILE              ="test_data.csv"
 TICKS                       =100 ##ticks for battery drain simulation
 
-# ==============================================================================
-# LOGGER & TEST DATA SETUP
-# ==============================================================================
-
-log = logger()  # Initialize logger from utils
 
 # Build absolute path to test_data.csv relative to this test file
 BASE_DIR   = Path(__file__).parent
 file_path  = BASE_DIR / "test_data" /TEST_DATA_FILE 
 
-# Load parametrized test inputs (battery level, wind speed) from CSV
-test_params = load_params_from_csv(file_path)
-
 # ==============================================================================
-# CUSTOM EXCEPTIONS
+# LOGGER & TEST DATA SETUP
 # ==============================================================================
 
-class DroneSetupError(AssertionError):
-    """Raised when drone initialisation steps fail."""
+try:
+    log = logger()  # Initialize logger from utils
+    # Load parametrized test inputs (battery level, wind speed) from CSV
+    test_params = load_params_from_csv(file_path)
+except Exception as e:
+     raise 
 
-class DronePreconditionsFail(AssertionError):
-    """Raised when drone precondition checks fail."""
-
-
-# ==============================================================================
-# PRECONDITION CHECKS
-# ==============================================================================
-
-class Drone_Preconditions:
-
-    def drone_preconditions(self, drone):
-        """
-        Validates that the drone meets all preconditions before test execution:
-          - Battery level is above critical threshold
-          - Drone is positioned at HOME
-          - Distance counter is zero
-          - Wind speed is within acceptable range
-        Raises DronePreconditionsFail if any check fails.
-        """      
-        try:    # Check battery is above critical threshold before starting
-            assert drone.battery_level >= CRITICAL_BATTERY_THRESHOLD, \
-                    f"Low Battery: precondition not met. Battery={drone.battery_level}"
-            log.info(f"{TEST_CASE_ID} Precondition: Battery OK = {drone.battery_level}")
-
-                # Check drone is at HOME position
-            assert drone.position == HOME, \
-                    f"HOME location mismatch. Actual={drone.position}, Expected={HOME}"
-            log.info(f"{TEST_CASE_ID} Precondition: Position OK = {drone.position}")
-
-                # Check distance counter is reset to zero
-            assert drone.distance == 0, \
-                    f"Distance not zero. Actual={drone.distance}"
-            log.info(f"{TEST_CASE_ID} Precondition: Distance OK = {drone.distance}")
-
-                # Check wind speed is within safe limits
-            assert drone.wind <= MAX_WIND_SPEED, \
-                    f"Wind speed {drone.wind} exceeds max {MAX_WIND_SPEED}"
-            log.info(f"{TEST_CASE_ID} Precondition: Wind speed OK = {drone.wind}")
-        except Exception as e:
-                log.error(f"{TEST_CASE_ID} Preconditon check failed.{e}")
-                raise DronePreconditionsFail(f"Drone Precondition failed {e}")
             
     
       
@@ -113,44 +69,60 @@ class TestEmergencyReturn():
           8. Assert final mode is LANDED and position is HOME
         """
         try:
-            pre_conditions = Drone_Preconditions()
+            #pre_conditions = Drone_Preconditions()
             log.info(f"\n\n-------------------------- {TEST_CASE_ID} | Battery={input_battery_level} | Wind={input_wind_speed} ------------------------------------\n\n")
 
             # ------------------------------------------------------------------
             # STEP 1: Drone Initialisation
             # ------------------------------------------------------------------
-            try:
-                # Power on the drone
-                drone.power_on_drone()
-                log.info(f"{TEST_CASE_ID} Drone powered on.")
-                assert drone.power == True, \
+            
+            # Power on the drone
+            drone.power_on_drone()
+            log.info(f"{TEST_CASE_ID} Drone powered on.")
+            assert drone.power == True, \
                     f"Drone failed to power on. Actual status: {drone.power}"
 
-                # Set battery to parametrized level from CSV
-                drone.initailize_battery(input_battery_level)
+            # Set battery to parametrized level from CSV
+            drone.initailize_battery(input_battery_level)
 
-                # Enable GPS and wait for satellite lock (>6 satellites)
-                drone.gps_lock()
-                log.info(f"{TEST_CASE_ID} GPS locked (>6 satellites).")
-                assert drone.gps == True, \
+            # Enable GPS and wait for satellite lock (>6 satellites)
+            drone.gps_lock()
+            log.info(f"{TEST_CASE_ID} GPS locked (>6 satellites).")
+            assert drone.gps == True, \
                     f"GPS not enabled. Actual status: {drone.gps}"
 
                 # Set drone starting position to HOME
-                drone.set_position(HOME)
-                log.info(f"{TEST_CASE_ID} Home position set: {HOME}")
+            drone.set_position(HOME)
+            log.info(f"{TEST_CASE_ID} Home position set: {HOME}")
 
                 # Apply parametrized wind speed
-                drone.set_wind_speed(input_wind_speed)
-                log.info(f"{TEST_CASE_ID} Wind speed set: {drone.wind}")
+            drone.set_wind_speed(input_wind_speed)
+            log.info(f"{TEST_CASE_ID} Wind speed set: {drone.wind}")
 
-            except Exception as error:
-                log.error(f"{TEST_CASE_ID} Drone initialisation failed.")
-                raise DroneSetupError(f"Drone initialisation failed: {error}")
+            
 
             # ------------------------------------------------------------------
             # STEP 2: Precondition Validation
             # ------------------------------------------------------------------
-            pre_conditions.drone_preconditions(drone)
+            #pre_conditions.drone_preconditions(drone)
+            assert drone.battery_level >= CRITICAL_BATTERY_THRESHOLD, \
+                    f"Low Battery: precondition not met. Battery={drone.battery_level}"
+            log.info(f"{TEST_CASE_ID} Precondition: Battery OK = {drone.battery_level}")
+
+                # Check drone is at HOME position
+            assert drone.position == HOME, \
+                    f"HOME location mismatch. Actual={drone.position}, Expected={HOME}"
+            log.info(f"{TEST_CASE_ID} Precondition: Position OK = {drone.position}")
+
+                # Check distance counter is reset to zero
+            assert drone.distance == 0, \
+                    f"Distance not zero. Actual={drone.distance}"
+            log.info(f"{TEST_CASE_ID} Precondition: Distance OK = {drone.distance}")
+
+                # Check wind speed is within safe limits
+            assert drone.wind <= MAX_WIND_SPEED, \
+                    f"Wind speed {drone.wind} exceeds max {MAX_WIND_SPEED}"
+            log.info(f"{TEST_CASE_ID} Precondition: Wind speed OK = {drone.wind}")
 
             # ------------------------------------------------------------------
             # STEP 3: Start Mission & Fly to Target Waypoint
@@ -235,7 +207,7 @@ class TestEmergencyReturn():
         # ERROR HANDLING
         # ----------------------------------------------------------------------
         except AssertionError as e:
-            log.error(f"{TEST_CASE_ID} Assertion failed: {e}")
+            log.error(f"{TEST_CASE_ID} Test Failed {e}")
             raise  # Re-raise so pytest marks test as FAILED
 
         except Exception as e:
